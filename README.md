@@ -8,6 +8,27 @@ Consists of the following plugins:
 - **github**: let you to publish gh-pages, wiki, gh release from gradle
 - **release**: adds release routine to your build (unsnapshotVersion, commit, tag, updateVersion, push)
 
+## Adding plugins
+
+```groovy
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'me.trnl:github-release-gradle-plugin:0.1'
+    }
+}
+
+apply plugin: 'git'
+apply plugin: 'console'
+apply plugin: 'github'
+apply plguin: 'release'
+```
+
+Please note that if you are applying 'github' or 'release', there is no need of adding 'git'.
+It will be done automatically.
+
 ### Console
 
 With this plugin your can ask for user input in your build.
