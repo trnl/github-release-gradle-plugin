@@ -1,0 +1,101 @@
+import org.gradle.api.artifacts.maven.MavenDeployment
+
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+group = 'me.trnl'
+version = '0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile gradleApi()
+    compile('org.codehaus.groovy.modules.http-builder:http-builder:0.6') {
+        exclude group: 'org.codehaus.groovy', module: 'groovy'
+    }
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+signing {
+    required { gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "1.7"
+}
+
+project.ext.mavenDeployers = []
+
+def pom = { config ->
+    project.mavenDeployers*.pom config
+}
+
+install {
+    project.mavenDeployers << repositories.mavenInstaller
+}
+
+uploadArchives {
+    project.mavenDeployers << repositories.mavenDeployer {
+        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        def sonatypeCredentials = [
+                userName: project.properties.sonatypeUsername,
+                password: project.properties.sonatypePassword
+        ]
+
+        snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
+            authentication(sonatypeCredentials)
+        }
+        repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
+            authentication(sonatypeCredentials)
+        }
+    }
+}
+
+pom {
+    project {
+
+        name 'Github Gradle Release Plugins'
+        description ='Set of plugins that can help you to release your project on Github'
+        url 'http://github.com/trnl/clirr-gradle-plugin'
+        scm {
+            url 'git@github.com:trnl/release-gradle-plugin.git'
+            connection 'scm:git:git@github.com:trnl/release-gradle-plugin.git'
+            developerConnection 'scm:git:git@github.com:trnl/release-gradle-plugin.git'
+
+        }
+
+        licenses {
+            license {
+                name 'The Apache Software License, Version 2.0'
+                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution 'repo'
+            }
+        }
+        developers {
+            developer {
+                id 'trnl'
+                name 'Uladzimir Mihura'
+                url = 'http://github.com/trnl'
+            }
+        }
+    }
+}

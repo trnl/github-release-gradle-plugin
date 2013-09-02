@@ -13,6 +13,6 @@
 *.ipr
 *.iws
 
-*build*
+build/
 .gradle
 
