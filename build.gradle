@@ -6,7 +6,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 
 group = 'me.trnl'
-version = '0.1-SNAPSHOT'
+version = '0.1'
 
 repositories {
     mavenCentral()
