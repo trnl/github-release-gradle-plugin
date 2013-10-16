@@ -31,8 +31,9 @@ class WikiTask extends DefaultTask {
             with(project.github.wiki)
             into(workingDir)
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
-        }
-        project.task('commitWiki', group: GROUP_WIKI, dependsOn: 'processWiki') << this.&commitWiki
+        } 
+        project.task('updateIndex', group: GROUP_WIKI, dependsOn: 'processWiki')<< this.&updateIndex
+        project.task('commitWiki', group: GROUP_WIKI, dependsOn: 'updateIndex') << this.&commitWiki
         project.task('pushWiki', group: GROUP_WIKI, dependsOn: 'commitWiki') << this.&pushWiki
         this.dependsOn('pushWiki')
     }
@@ -49,6 +50,25 @@ class WikiTask extends DefaultTask {
 
     def cloneWiki() {
         project.git.clone(workingDir, remote, 1)
+    }
+
+    def updateIndex() {
+        def versions = []
+        def remote = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
+            m -> "https://rawgithub.com/wiki/${m[1]}/${m[2]}/javadoc/${project.version}/index.html"
+        })
+        def markdown = "## [Current](${remote})\n"
+        new File(workingDir, 'javadoc').eachDir {
+            d ->
+                versions << d
+        }
+        versions.reverse().each {
+            remote = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
+                m -> "https://rawgithub.com/wiki/${m[1]}/${m[2]}/javadoc/${it.name}/index.html" 
+            })
+            markdown = markdown + " * [${it.name}](${remote})\n"
+        }
+        new File(workingDir, "Javadoc.md").write(markdown);
     }
 
     def commitWiki() {
