@@ -41,6 +41,31 @@ class DraftReleaseTask extends DefaultTask {
         }
     }
 
+    def githubUrl(base, method) {
+        def repo = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
+            m -> "repos/${m[1]}/${m[2]}"
+        })
+        println "repo = $repo"
+        "${base}/${repo}/${method}"
+    }
+
+
+    def createRelease() {
+        def notes = project.release.githubRelease.releaseNotes
+        if (notes == null) {
+            notes = defaultNotes()
+        }
+
+        project.github.with {
+            post(githubUrl("https://api.github.com", "releases"), [
+                    tag_name: release.tag.toString(),
+                    name    : release.name.toString(),
+                    body    : notes.toString(),
+                    draft   : true
+            ]).id
+        }
+    }
+
     def void uploadArchives(releaseId) {
         def keyStore = KeyStore.getInstance(KeyStore.defaultType)
         new File("/Users/jlee/.keystore").withInputStream {
@@ -54,47 +79,16 @@ class DraftReleaseTask extends DefaultTask {
         }
     }
 
-    def createRelease() {
-        def notes = project.release.githubRelease.releaseNotes
-        if (notes == null) {
-            notes = defaultNotes()
-        }
-
-        project.github.with {
-            def path = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
-                m -> "/repos/${m[1]}/${m[2]}/releases"
-            })
-
-            def http = new HTTPBuilder("https://api.github.com${path}")
-            def response = http.request(Method.POST, ContentType.JSON) {
-                headers['Accept'] = 'application/vnd.github.manifold-preview'
-                headers['User-Agent'] = 'Mozilla/5.0 Ubuntu/8.10 Firefox/3.0.4'
-                headers['Authorization'] = 'Basic ' + "$credentials.username:$credentials.password"
-                        .getBytes('iso-8859-1')
-                        .encodeBase64()
-                body = [
-                        tag_name: release.tag.toString(),
-                        name    : release.name.toString(),
-                        body    : notes.toString(),
-                        draft   : true
-                ]
-            }
-
-            response.id
-        }
-    }
-
     def void uploadArchive(archive, releaseId, keyStore) {
         project.github.with {
             def jar = archive.getAllArtifacts().find { artifact ->
                 artifact.getFile().getName().endsWith("-${project.version}.jar")
             }
 
-            def path = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
-                m -> "/repos/${m[1]}/${m[2]}/releases/${releaseId}/assets?name=${jar.getFile().getName()}"
-            })
-
-            def http = new HTTPBuilder("https://uploads.github.com${path}")
+            def url = githubUrl("https://uploads.github.com", "releases/${releaseId}/assets?name=${jar.getFile().getName()}")
+            println "url = $url"
+            
+            def http = new HTTPBuilder(url)
             def strategy = new TrustStrategy() {
                 @Override
                 boolean isTrusted(final X509Certificate[] chain, final String authType) throws CertificateException {
@@ -123,7 +117,6 @@ class DraftReleaseTask extends DefaultTask {
             println "Uploading ${jar.getFile()}"
             http.request(Method.POST, ContentType.BINARY) {
                 headers['Accept'] = 'application/vnd.github.manifold-preview'
-                headers['Origin'] = 'github.com'
                 headers['User-Agent'] = 'Mozilla/5.0 Ubuntu/8.10 Firefox/3.0.4'
                 headers['Authorization'] = 'Basic ' + "$credentials.username:$credentials.password"
                         .getBytes('iso-8859-1')
@@ -135,11 +128,26 @@ class DraftReleaseTask extends DefaultTask {
     }
 
     def defaultNotes() {
-        def mileStone = getMilestone(project.release.version) 
+        def mileStone = getMilestone(project.release.version)
         "Hey!  I'm releasing $project.release.version today!"
     }
 
     def getMilestone(version) {
-        
+        def response = post("https://api.github.com${path}/milestones", [])
+        println response
+    }
+
+    def Object post(url, content) {
+        println "posting to ${url}"
+        project.github.with {
+            new HTTPBuilder(url).request(Method.POST, ContentType.JSON) {
+                headers['Accept'] = 'application/vnd.github.manifold-preview'
+                headers['User-Agent'] = 'Mozilla/5.0 Ubuntu/8.10 Firefox/3.0.4'
+                headers['Authorization'] = 'Basic ' + "$credentials.username:$credentials.password"
+                        .getBytes('iso-8859-1')
+                        .encodeBase64()
+                body = content
+            }
+        }
     }
 }
