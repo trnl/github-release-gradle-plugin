@@ -67,13 +67,12 @@ class ReleaseTask extends GradleBuild {
                 description: 'Pushes changes to remote repository.'
         ) << this.&pushToRemote
         
-        githubRelease {
-            releaseNotes = { "Hey!  I'm releasing $project.release.version today!" }
-        }
+//        githubRelease {
+//            releaseNotes = { "Hey!  I'm releasing $project.release.version today!" }
+//        }
     }
 
     private void setDefaults() {
-        println "ReleaseTask.setDefaults"
         group = 'release'
         description = 'Verify project, release, and update version to next.'
         update = new UpdateSpec()
