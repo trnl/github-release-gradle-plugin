@@ -10,13 +10,13 @@ class NextSpec {
         return version
     }
 
+    void setVersion(final def version) {
+        this.version = version
+    }
+
     def getCommitMessage() {
         commitMessage = call(commitMessage)
         return commitMessage
-    }
-
-    void setVersion(final def version) {
-        this.version = version
     }
 
     void setCommitMessage(final def commitMessage) {

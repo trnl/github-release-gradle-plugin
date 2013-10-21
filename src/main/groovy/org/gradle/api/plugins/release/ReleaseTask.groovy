@@ -13,6 +13,7 @@ class ReleaseTask extends GradleBuild {
 
     UpdateSpec update
     NextSpec next
+    GithubReleaseSpec githubRelease
 
     ReleaseTask() {
         startParameter = project.gradle.startParameter.newInstance()
@@ -65,19 +66,24 @@ class ReleaseTask extends GradleBuild {
                 group: 'release',
                 description: 'Pushes changes to remote repository.'
         ) << this.&pushToRemote
+        
+        githubRelease {
+            releaseNotes = { "Hey!  I'm releasing $project.release.version today!" }
+        }
     }
 
     private void setDefaults() {
+        println "ReleaseTask.setDefaults"
         group = 'release'
         description = 'Verify project, release, and update version to next.'
-        update = new UpdateSpec();
-        next = new NextSpec();
+        update = new UpdateSpec()
+        next = new NextSpec()
+        githubRelease = new GithubReleaseSpec()
         version = project.version - '-SNAPSHOT'
         tag = "r$version"
         tagMessage = "Release $version"
         commitMessage = "Release $version"
     }
-
 
     def unSnapshotVersion() {
         def oldVersion = project.version
@@ -121,6 +127,10 @@ class ReleaseTask extends GradleBuild {
 
     void next(Closure closure) {
         ConfigureUtil.configure(closure, this.next)
+    }
+
+    void githubRelease(Closure closure) {
+        ConfigureUtil.configure(closure, this.githubRelease)
     }
 
     void dependsOn(List<Task> t) {
