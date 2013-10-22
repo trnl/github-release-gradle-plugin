@@ -33,19 +33,14 @@ class DraftReleaseTask extends DefaultTask {
             throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern")
         }
 
-        project.github.with {
-            def releaseId = createRelease()
-
-            uploadArchives(releaseId)
-
-        }
+        def release = createRelease()
+        uploadArchives(release)
     }
 
     def githubUrl(base, method) {
         def repo = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
             m -> "repos/${m[1]}/${m[2]}"
         })
-        println "repo = $repo"
         "${base}/${repo}/${method}"
     }
 
@@ -86,7 +81,6 @@ class DraftReleaseTask extends DefaultTask {
             }
 
             def url = githubUrl("https://uploads.github.com", "releases/${releaseId}/assets?name=${jar.getFile().getName()}")
-            println "url = $url"
             
             def http = new HTTPBuilder(url)
             def strategy = new TrustStrategy() {
@@ -128,17 +122,66 @@ class DraftReleaseTask extends DefaultTask {
     }
 
     def defaultNotes() {
-        def mileStone = getMilestone(project.release.version)
-        "Hey!  I'm releasing $project.release.version today!"
+        def milestone = getMilestone(project.release.version)
+        def issues = getIssues(milestone)
+
+        def javadoc = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
+            m -> "https://rawgithub.com/wiki/${m[1]}/${m[2]}/javadoc/${project.release.version}/index.html"
+        })
+
+        def notes = """
+## Version ${project.release.version} (${new Date().format("MMM dd, yyyy")})
+
+### Downloads
+Below and on maven central. 
+
+### Docs
+${javadoc}
+
+"""
+        issues.each { label ->
+            notes = notes << "### ${label.key.name.toUpperCase()}\n"
+            label.value.each { issue ->
+                notes = notes << "* [Issue ${issue.number}](${issue.url}): ${issue.title}\n"
+            }
+            notes = notes << "\n"
+        }
+        
+        notes
+    }
+
+    def getIssues(milestone) {
+        def map = [:].withDefault { key -> [] }
+        def issues = get(githubUrl("https://api.github.com", "issues?milestone=${milestone}"))
+        issues.each { issue ->
+            issue.labels.each { label ->
+                map[label] << issue
+            }
+            if(issue.labels.size == 0) {
+                map[[name : "Unlabeled"]] << issue
+            }
+        }
+        map
     }
 
     def getMilestone(version) {
-        def response = post("https://api.github.com${path}/milestones", [])
-        println response
+        get(githubUrl("https://api.github.com", "milestones")).find { milestone ->
+            milestone.title == version
+        }.number
     }
 
+    def Object get(url) {
+        project.github.with {
+            new HTTPBuilder(url).request(Method.GET, ContentType.JSON) {
+                headers['Accept'] = 'application/vnd.github.manifold-preview'
+                headers['User-Agent'] = 'Mozilla/5.0 Ubuntu/8.10 Firefox/3.0.4'
+                headers['Authorization'] = 'Basic ' + "$credentials.username:$credentials.password"
+                        .getBytes('iso-8859-1')
+                        .encodeBase64()
+            }
+        }
+    }
     def Object post(url, content) {
-        println "posting to ${url}"
         project.github.with {
             new HTTPBuilder(url).request(Method.POST, ContentType.JSON) {
                 headers['Accept'] = 'application/vnd.github.manifold-preview'
