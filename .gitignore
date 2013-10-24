@@ -12,7 +12,8 @@
 *.iml
 *.ipr
 *.iws
+*.swp
 
 build/
 .gradle
-
+release.sh

@@ -2,13 +2,24 @@ import org.gradle.api.artifacts.maven.MavenDeployment
 
 apply plugin: 'groovy'
 apply plugin: 'idea'
-apply plugin: 'maven'
-apply plugin: 'signing'
+apply plugin: 'nexus'
 
-group = 'me.trnl'
-version = '0.2-SNAPSHOT'
+group = 'com.antwerkz.github'
+version = '1.0.0-RC1'
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'org.gradle.api.plugins:gradle-nexus-plugin:0.3'
+    }
+}
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -19,6 +30,7 @@ dependencies {
     }
 }
 
+/*
 task sourcesJar(type: Jar) {
     classifier = 'sources'
     from sourceSets.main.allSource
@@ -28,16 +40,19 @@ task javadocJar(type: Jar) {
     classifier = 'javadoc'
     from javadoc
 }
+*/
 
 artifacts {
     archives sourcesJar
     archives javadocJar
 }
 
+/*
 signing {
     required { gradle.taskGraph.hasTask("uploadArchives") }
     sign configurations.archives
 }
+*/
 
 task wrapper(type: Wrapper) {
     gradleVersion = "1.7"
@@ -70,16 +85,20 @@ uploadArchives {
     }
 }
 
-pom {
+nexus {
+    sign = true
+}
+
+modifyPom {
     project {
 
         name 'Github Gradle Release Plugins'
-        description ='Set of plugins that can help you to release your project on Github'
-        url 'http://github.com/trnl/clirr-gradle-plugin'
+        description = 'Set of plugins that can help you to release your project on Github'
+        url 'http://github.com/evanchooly/github-release-gradle-plugin'
         scm {
-            url 'git@github.com:trnl/release-gradle-plugin.git'
-            connection 'scm:git:git@github.com:trnl/release-gradle-plugin.git'
-            developerConnection 'scm:git:git@github.com:trnl/release-gradle-plugin.git'
+            url 'git@github.com:evanchooly/github-release-gradle-plugin.git'
+            connection 'scm:git:git@github.com:evanchooly/github-release-gradle-plugin.git'
+            developerConnection 'scm:git:git@github.com:evanchooly/github-release-gradle-plugin.git'
 
         }
 
@@ -95,6 +114,11 @@ pom {
                 id 'trnl'
                 name 'Uladzimir Mihura'
                 url = 'http://github.com/trnl'
+            }
+            developer {
+                id 'evanchooly'
+                name 'Justin Lee'
+                url = 'http://github.com/evanchooly'
             }
         }
     }
