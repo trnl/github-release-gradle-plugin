@@ -108,7 +108,7 @@ class DraftReleaseTask extends DefaultTask {
                             true
                         }
                     }), 443))
-            println "Uploading ${jar.getFile()}"
+            println "Uploading ${jar.getFile()} to ${url}"
             http.request(Method.POST, ContentType.BINARY) {
                 headers['Accept'] = 'application/vnd.github.manifold-preview'
                 headers['User-Agent'] = 'Mozilla/5.0 Ubuntu/8.10 Firefox/3.0.4'
@@ -142,7 +142,7 @@ ${javadoc}
         issues.each { label ->
             notes = notes << "### ${label.key.name.toUpperCase()}\n"
             label.value.each { issue ->
-                notes = notes << "* [Issue ${issue.number}](${issue.url}): ${issue.title}\n"
+                notes = notes << "* [Issue ${issue.number}](${issue.html_url}): ${issue.title}\n"
             }
             notes = notes << "\n"
         }

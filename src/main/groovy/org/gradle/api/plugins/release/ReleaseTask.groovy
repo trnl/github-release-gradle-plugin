@@ -73,7 +73,6 @@ class ReleaseTask extends GradleBuild {
     }
 
     private void setDefaults() {
-        group = 'release'
         description = 'Verify project, release, and update version to next.'
         update = new UpdateSpec()
         next = new NextSpec()
