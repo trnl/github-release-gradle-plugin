@@ -152,7 +152,7 @@ ${javadoc}
 
     def getIssues(milestone) {
         def map = [:].withDefault { key -> [] }
-        def issues = get(githubUrl("https://api.github.com", "issues?milestone=${milestone}"))
+        def issues = get(githubUrl("https://api.github.com", "issues?milestone=${milestone}&state=closed"))
         issues.each { issue ->
             issue.labels.each { label ->
                 map[label] << issue
