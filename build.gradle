@@ -1,107 +1,106 @@
-import org.gradle.api.artifacts.maven.MavenDeployment
-
 apply plugin: 'groovy'
 apply plugin: 'idea'
 apply plugin: 'nexus'
 
 group = 'com.antwerkz.github'
-version = '1.0.0-RC3'
+version = '1.0.0-RC4'
 
 buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
+  repositories {
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+  }
 
-    dependencies {
-        classpath 'org.gradle.api.plugins:gradle-nexus-plugin:0.3'
-    }
+  dependencies {
+    classpath 'org.gradle.api.plugins:gradle-nexus-plugin:0.5'
+  }
 }
 
 repositories {
-    mavenLocal()
-    mavenCentral()
+  mavenLocal()
+  mavenCentral()
 }
 
 dependencies {
-    compile gradleApi()
-    compile('org.codehaus.groovy.modules.http-builder:http-builder:0.6') {
-        exclude group: 'org.codehaus.groovy', module: 'groovy'
-    }
+  compile gradleApi()
+  compile('org.codehaus.groovy.modules.http-builder:http-builder:0.6') {
+    exclude group: 'org.codehaus.groovy', module: 'groovy'
+  }
+  runtime 'org.gradle.api.plugins:gradle-nexus-plugin:0.5'
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "1.7"
+  gradleVersion = "1.8"
 }
 
 project.ext.mavenDeployers = []
 
 def pom = { config ->
-    project.mavenDeployers*.pom config
+  project.mavenDeployers*.pom config
 }
 
 install {
-    project.mavenDeployers << repositories.mavenInstaller
+  project.mavenDeployers << repositories.mavenInstaller
 }
 
 uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-        }
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
     }
-    project.mavenDeployers << repositories.mavenDeployer {
-        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-        def nexusCredentials = [
-                userName: project.properties.nexusUsername,
-                password: project.properties.nexusPassword
-        ]
+  }
+  project.mavenDeployers << repositories.mavenDeployer {
+    beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+    def nexusCredentials = [
+            userName: project.properties.nexusUsername,
+            password: project.properties.nexusPassword
+    ]
 
-        snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
-            authentication(nexusCredentials)
-        }
-        repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
-            authentication(nexusCredentials)
-        }
+    snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
+      authentication(nexusCredentials)
     }
+    repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
+      authentication(nexusCredentials)
+    }
+  }
 }
 
 nexus {
-    sign = true
+  sign = true
 }
 
 modifyPom {
-    project {
+  project {
+    name 'Github Gradle Release Plugins'
+    description = 'Set of plugins that can help you to release your project on Github'
+    url 'http://github.com/evanchooly/github-release-gradle-plugin'
+    version = project.version
+    scm {
+      url 'git@github.com:evanchooly/github-release-gradle-plugin.git'
+      connection 'scm:git:git@github.com:evanchooly/github-release-gradle-plugin.git'
+      developerConnection 'scm:git:git@github.com:evanchooly/github-release-gradle-plugin.git'
 
-        name 'Github Gradle Release Plugins'
-        description = 'Set of plugins that can help you to release your project on Github'
-        url 'http://github.com/evanchooly/github-release-gradle-plugin'
-        version = project.version
-        scm {
-            url 'git@github.com:evanchooly/github-release-gradle-plugin.git'
-            connection 'scm:git:git@github.com:evanchooly/github-release-gradle-plugin.git'
-            developerConnection 'scm:git:git@github.com:evanchooly/github-release-gradle-plugin.git'
-
-        }
-
-        licenses {
-            license {
-                name 'The Apache Software License, Version 2.0'
-                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                distribution 'repo'
-            }
-        }
-        developers {
-            developer {
-                id 'trnl'
-                name 'Uladzimir Mihura'
-                url = 'http://github.com/trnl'
-            }
-            developer {
-                id 'evanchooly'
-                name 'Justin Lee'
-                url = 'http://github.com/evanchooly'
-            }
-        }
     }
+
+    licenses {
+      license {
+        name 'The Apache Software License, Version 2.0'
+        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+        distribution 'repo'
+      }
+    }
+    developers {
+      developer {
+        id 'trnl'
+        name 'Uladzimir Mihura'
+        url = 'http://github.com/trnl'
+      }
+      developer {
+        id 'evanchooly'
+        name 'Justin Lee'
+        url = 'http://github.com/evanchooly'
+      }
+    }
+  }
 }
