@@ -51,7 +51,6 @@ class DraftReleaseTask extends DefaultTask {
 def defaultNotes(repository) {
     def milestone = getMilestone(repository)
     def issues = getIssues(repository, milestone)
-    println "issues = $issues"
 
     def javadoc = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
       m -> "https://rawgithub.com/wiki/${m[1]}/${m[2]}/javadoc/${project.release.version}/index.html"
