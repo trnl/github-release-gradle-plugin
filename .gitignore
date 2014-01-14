@@ -13,6 +13,7 @@
 *.ipr
 *.iws
 *.swp
+.idea
 
 build/
 .gradle

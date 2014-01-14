@@ -14,7 +14,6 @@ class WikiTask extends DefaultTask {
         setDefaults()
         workingDir = new File(project.buildDir, 'wiki')
 
-        println "origin = ${project.git.remotes['origin']}"
         remote = project.git.remote.replaceAll(
                 'git@github\\.com:(.+)\\/(.+)\\.git',
                 { m -> "git@github.com:${m[1]}/${m[2]}.wiki.git" }
