@@ -23,7 +23,7 @@ class WikiTask extends DefaultTask {
 
         project.task('cleanWiki', group: GROUP_WIKI) << this.&cleanWiki
         project.task('cloneWiki', group: GROUP_WIKI, dependsOn: 'cleanWiki') << this.&cloneWiki
-        project.task('processWiki', group: GROUP_WIKI, type: Copy, dependsOn: 'cloneWiki') {
+        project.task('processWiki', group: GROUP_WIKI, type: Copy) {
             with(project.github.wiki)
             into(workingDir)
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
@@ -45,9 +45,7 @@ class WikiTask extends DefaultTask {
     }
 
     def cloneWiki() {
-        println "****************** cloneWiki"
         println project.git
-        Thread.sleep(10000);
         project.git.clone(workingDir, remote, 1 )
     }
 
