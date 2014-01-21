@@ -29,6 +29,7 @@ dependencies {
   }
   runtime 'org.gradle.api.plugins:gradle-nexus-plugin:0.5'
   compile 'org.kohsuke:github-api:1.47'
+  compile 'org.eclipse.jgit:org.eclipse.jgit:3.2.0.201312181205-r'
 }
 
 task wrapper(type: Wrapper) {

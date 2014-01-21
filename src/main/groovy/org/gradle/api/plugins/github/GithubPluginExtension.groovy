@@ -8,7 +8,6 @@ class GithubPluginExtension {
     CopySpec pages
     CopySpec wiki
     ReleaseSpec release
-    CredentialsSpec credentials
 
     Project project
 
@@ -16,17 +15,9 @@ class GithubPluginExtension {
         this.project = project
     }
 
-    String getRepo() {
-        project.git.remote
-    }
-
-    void setRepo(final String repo) {
-        project.git.remote = repo
-    }
-
     def pages(Closure c) {
         pages = project.copySpec {}
-        project.task('publishGhPages', type: PagesTask)
+//        project.task('publishGhPages', type: PagesTask)
         ConfigureUtil.configure(c, pages)
     }
 
@@ -40,9 +31,5 @@ class GithubPluginExtension {
         release = new ReleaseSpec()
         project.task('draftGhRelease', type: DraftReleaseTask)
         ConfigureUtil.configure(c, release)
-    }
-
-    def credentials(Closure c) {
-        ConfigureUtil.configure(c, credentials)
     }
 }

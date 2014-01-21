@@ -1,5 +1,6 @@
 package org.gradle.api.plugins.github
 
+import org.eclipse.jgit.api.Git
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.TaskAction
@@ -9,6 +10,7 @@ import org.kohsuke.github.GitHub
 
 class DraftReleaseTask extends DefaultTask {
   public static final String GROUP_RELEASE = 'Github Release'
+  private String remote
 
   DraftReleaseTask() {
     group = GROUP_RELEASE
@@ -16,12 +18,15 @@ class DraftReleaseTask extends DefaultTask {
 
   @TaskAction
   void run() {
-    if (!(project.git.remote ==~ 'git@github\\.com:(.+)\\/(.+)\\.git')) {
-      throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern")
+    def git = Git.open(new File("."))
+    remote = git.repository.config.getString('remote', 'origin', 'url')
+
+    if (!(this.remote ==~ 'git@github\\.com:(.+)\\/(.+)\\.git')) {
+      throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern.  found ${this.remote}")
     }
 
     def gitHub = GitHub.connect()
-    def matcher = (project.git.remote =~ 'git@github\\.com:(.+)\\/(.+)\\.git')[0]
+    def matcher = (this.remote =~ 'git@github\\.com:(.+)\\/(.+)\\.git')[0]
     GHRepository repository = gitHub.getRepository("${matcher[1]}/${matcher[2]}")
     def notes = project.release.githubRelease.releaseNotes
     if (notes == null) {
@@ -52,7 +57,7 @@ def defaultNotes(repository) {
     def milestone = getMilestone(repository)
     def issues = getIssues(repository, milestone)
 
-    def javadoc = project.git.remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
+    def javadoc = remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
       m -> "https://rawgithub.com/wiki/${m[1]}/${m[2]}/javadoc/${project.release.version}/index.html"
     })
 

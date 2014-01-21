@@ -1,5 +1,6 @@
 package org.gradle.api.plugins.release
 
+import org.eclipse.jgit.api.Git
 import org.gradle.StartParameter
 import org.gradle.api.Task
 import org.gradle.api.tasks.GradleBuild
@@ -7,49 +8,53 @@ import org.gradle.initialization.GradleLauncherFactory
 import org.gradle.util.ConfigureUtil
 
 class ReleaseTask extends GradleBuild {
-  private Object aVersion
-  private Object aTag
-  private Object aTagMessage
-  private Object aCommitMessage
-
+  private String aVersion
+  private String aTag
+  private String aTagMessage
+  private String aCommitMessage
+  Git git
   UpdateSpec update
   NextSpec next
   GithubReleaseSpec githubRelease
+  String remote
 
   ReleaseTask(StartParameter currentBuild, GradleLauncherFactory gradleLauncherFactory) {
     super(currentBuild, gradleLauncherFactory)
-    startParameter =  project.gradle.startParameter.newInstance()
+    startParameter = project.gradle.startParameter.newInstance()
     startParameter.setRecompileScripts(false)
     startParameter.setRerunTasks(false)
 
     setDefaults()
 
     tasks = [
-            'unSnapshotVersion',
-            'commitReleaseVersion',
-            'tagReleaseVersion',
-            'updateVersion',
-            'commitNewVersion',
-            'pushToRemote'
+        'unSnapshotVersion',
+        'commitReleaseVersion',
+        'tagReleaseVersion',
+        'updateVersion',
+        'commitNewVersion',
+        'pushToRemote'
     ]
 
+    git = Git.open(new File('.'))
+    remote = git.repository.config.getString('remote', 'origin', 'url')
+
     project.task('unSnapshotVersion', group: 'release',
-            description: 'Updates version to release variant.') << this.&unSnapshotVersion
+        description: 'Updates version to release variant.') << this.&unSnapshotVersion
 
     project.task('commitReleaseVersion', group: 'release',
-            description: 'Commits the release version update.') << this.&commitReleaseVersion
+        description: 'Commits the release version update.') << this.&commitReleaseVersion
 
     project.task('tagReleaseVersion', group: 'release',
-            description: 'Tags the release version update.') << this.&tagReleaseVersion
+        description: 'Tags the release version update.') << this.&tagReleaseVersion
 
     project.task('updateVersion', group: 'release',
-            description: 'Updates version to next, using x.x.x+1 pattern.') << this.&updateVersion
+        description: 'Updates version to next, using x.x.x+1 pattern.') << this.&updateVersion
 
     project.task('commitNewVersion', group: 'release',
-            description: 'Commits the version update.') << this.&commitNewVersion
+        description: 'Commits the version update.') << this.&commitNewVersion
 
     project.task('pushToRemote', group: 'release',
-            description: 'Pushes changes to remote repository.') << this.&pushToRemote
+        description: 'Pushes changes to remote repository.') << this.&pushToRemote
 
 //        githubRelease {
 //            releaseNotes = { "Hey!  I'm releasing $project.release.version today!" }
@@ -76,13 +81,21 @@ class ReleaseTask extends GradleBuild {
 
   def commitReleaseVersion() {
     update.files.each {
-      project.git.add(it)
+      git.add()
+          .addFilepattern(it.path)
+          .call()
     }
-    project.git.commit(getCommitMessage())
+    git.commit()
+        .setMessage(getCommitMessage())
+        .call()
   }
 
   def tagReleaseVersion() {
-    project.git.tag(getTag(), getTagMessage())
+    git.tag()
+        .setName(getTag())
+        .setMessage(getTagMessage())
+//        .setAnnotated(false)
+        .call()
   }
 
   def updateVersion() {
@@ -94,13 +107,18 @@ class ReleaseTask extends GradleBuild {
 
   def commitNewVersion() {
     update.files.each {
-      project.git.add(it)
+      git.add()
+          .addFilepattern(it.path)
+          .call()
     }
-    project.git.commit(next.commitMessage)
+    git.commit()
+        .setMessage(next.commitMessage)
+        .call()
   }
 
   def pushToRemote() {
-    project.git.push()
+    git.push()
+    .call()
   }
 
   void update(Closure closure) {
@@ -140,7 +158,7 @@ class ReleaseTask extends GradleBuild {
 
   def getCommitMessage() {
     aCommitMessage = call(aCommitMessage)
-    return aCommitMessage
+    return aCommitMessage.toString()
   }
 
   void setVersion(final def version) {
