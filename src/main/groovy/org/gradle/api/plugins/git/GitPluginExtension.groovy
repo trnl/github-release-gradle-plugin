@@ -39,7 +39,9 @@ class GitPluginExtension {
   }
 
   void add(File file) {
-    exec('add', updateSeparators(file.absolutePath))
+      git.add()
+        .addFilepattern(file.absolutePath)
+        .call()
   }
 
   void add(File workDir, String path) {

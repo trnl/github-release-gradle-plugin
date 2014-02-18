@@ -23,7 +23,8 @@ class GithubPluginExtension {
 
     def wiki(Closure c) {
         wiki = project.copySpec {}
-        project.task('publishWiki', type: WikiTask)
+        def task = project.task('publishWiki', type: WikiTask)
+//        task.dependsOn(project.path('release'))
         ConfigureUtil.configure(c, wiki)
     }
 
