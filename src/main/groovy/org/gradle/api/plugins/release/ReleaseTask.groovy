@@ -1,12 +1,14 @@
 package org.gradle.api.plugins.release
-
 import org.eclipse.jgit.api.Git
-import org.gradle.api.DefaultTask
+import org.gradle.StartParameter
 import org.gradle.api.plugins.github.DraftReleaseTask
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.GradleBuild
+import org.gradle.initialization.GradleLauncherFactory
 import org.gradle.util.ConfigureUtil
 
-class ReleaseTask extends DefaultTask {
+import javax.inject.Inject
+
+class ReleaseTask extends GradleBuild {
     public static final String GROUP_RELEASE = 'Github Release'
     def String tagPrefix = "r"
     def String releaseVersion
@@ -19,63 +21,45 @@ class ReleaseTask extends DefaultTask {
     DraftReleaseTask ghReleaseTask
     String remote
 
-    ReleaseTask() {
+    @Inject
+    ReleaseTask(StartParameter currentBuild, GradleLauncherFactory gradleLauncherFactory) {
+        super(currentBuild, gradleLauncherFactory)
         group = GROUP_RELEASE
         description = 'Verify project, release, and update version to next.'
         ghReleaseTask = project.task('draftGhRelease', type: DraftReleaseTask)
 
-        dependsOn('clean')
-        
+        tasks = [
+                'updateToReleaseVersion',
+                'uploadArchives',
+                'pushToRemote',
+                'updateToNextVersion',
+        ]
+
         ghReleaseTask.releaseTask = this
 
-    }
-
-    @TaskAction
-    void run() {
         git = Git.open(new File('.'))
         remote = git.repository.config.getString('remote', 'origin', 'url')
 
-        project.task('unSnapshotVersion', group: 'release',
-                description: 'Updates version to release variant.') << this.&unSnapshotVersion
+        project.task('updateToReleaseVersion', group: 'release',
+                description: 'Updates version to release variant.') << this.&updateToReleaseVersion
 
-        project.task('commitReleaseVersion', group: 'release',
-                description: 'Commits the release version update.') << this.&commitReleaseVersion
-
-        project.task('tagReleaseVersion', group: 'release',
-                description: 'Tags the release version update.') << this.&tagReleaseVersion
-
-
-        def update = project.task('updateVersion', group: 'release',
-                description: 'Updates version to next, using x.x.x+1 pattern.') << this.&updateVersion
-        update.dependsOn('uploadArchives')
-        project.task('commitNewVersion', group: 'release',
-                description: 'Commits the version update.') << this.&commitNewVersion
-
-        def pushToRemote = project.task('pushToRemote', group: 'release',
+        project.task('pushToRemote', group: 'release',
                 description: 'Pushes changes to remote repository.') << this.&pushToRemote
-        
-        pushToRemote.dependsOn(ghReleaseTask)
+//        pushToRemote.dependsOn('compileJava', 'jar', 'uploadArchives')
 
+        def updateToNextVersion = project.task('updateToNextVersion', group: 'release',
+                description: 'Updates version to next, using x.x.x+1 pattern.') << this.&updateToNextVersion
+        updateToNextVersion.dependsOn(ghReleaseTask)
     }
 
+    def updateToReleaseVersion() {
+        updateVersions(project.version, releaseVersion)
+        println "********** project.version = ${project.version}"
 
-    def unSnapshotVersion() {
-        update.files.each { project.ant.replaceregexp(file: it, match: project.version, replace: nextVersion) }
-        update.projects*.version = nextVersion
-    }
-
-    def commitReleaseVersion() {
-        update.files.each {
-            git.add()
-                    .addFilepattern(it.path)
-                    .call()
-        }
         git.commit()
                 .setMessage("Release $releaseVersion")
                 .call()
-    }
 
-    def tagReleaseVersion() {
         if (tagRelease) {
             git.tag()
                     .setName(tagName())
@@ -88,20 +72,22 @@ class ReleaseTask extends DefaultTask {
         tagPrefix + releaseVersion
     }
 
-    def updateVersion() {
-        update.files.each { project.ant.replaceregexp(file: it, match: project.version, replace: nextVersion) }
-        update.projects*.version = nextVersion
+    def updateToNextVersion() {
+        updateVersions(releaseVersion, nextVersion)
+
+        git.commit()
+                .setMessage("Update to next development version: ${nextVersion}")
+                .call()
     }
 
-    def commitNewVersion() {
+    def updateVersions(oldVersion, String newVersion) {
         update.files.each {
+            project.ant.replaceregexp(file: it, match: oldVersion, replace: newVersion)
             git.add()
                     .addFilepattern(it.path)
                     .call()
         }
-        git.commit()
-                .setMessage("Bumping version to ${nextVersion}")
-                .call()
+        update.projects*.version = newVersion
     }
 
     def pushToRemote() {
@@ -118,12 +104,8 @@ class ReleaseTask extends DefaultTask {
     }
 
     void version(final def block) {
-        println "********** org.gradle.api.plugins.release.ReleaseTask.version"
-        println "********** block = ${call(block)}"
         this.releaseVersion = call(block) - '-SNAPSHOT'
-        println "********** releaseVersion = ${releaseVersion}"
         nextVersion = bumpVersion(releaseVersion)
-        println "********** nextVersion = ${nextVersion}"
     }
 
     void createRelease(boolean create) {
@@ -133,7 +115,6 @@ class ReleaseTask extends DefaultTask {
     def bumpVersion(String old) {
         if (old != "unspecified") {
             String[] split = old.split('\\.')
-            println "********** split = ${split}"
             def next = (split.last() as int) + 1
 
             def updated = split[0..-2].join('.')

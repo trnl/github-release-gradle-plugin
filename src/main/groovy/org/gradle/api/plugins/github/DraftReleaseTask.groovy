@@ -1,4 +1,5 @@
 package org.gradle.api.plugins.github
+
 import org.eclipse.jgit.api.Git
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -48,7 +49,7 @@ class DraftReleaseTask extends DefaultTask {
                         }
 
                         println "Uploading ${jar.getFile()}"
-//            ghRelease.uploadAsset(jar.getFile(), "application/jar")
+                        ghRelease.uploadAsset(jar.getFile(), "application/jar")
                     }
                 }
             }
@@ -57,8 +58,6 @@ class DraftReleaseTask extends DefaultTask {
 
     def defaultNotes(repository) {
         def milestone = getMilestone(repository)
-        println "********** org.gradle.api.plugins.github.DraftReleaseTask.defaultNotes"
-        println "********** milestone = ${milestone}"
         def issues = getIssues(repository, milestone)
 
         def javadoc = remote.replaceAll('git@github\\.com:(.+)\\/(.+)\\.git', {
@@ -90,11 +89,9 @@ ${javadoc}
     static def getIssues(repository, milestone) {
         def issues = [:].withDefault { [] }
         def list = repository.listIssues(CLOSED)
-        println "********** org.gradle.api.plugins.github.DraftReleaseTask.getIssues"
-        println "********** milestone = ${milestone}"
         list.each { issue ->
             if (issue.milestone?.number == milestone.number) {
-                if(issue.labels) {
+                if (issue.labels) {
                     issue.labels.each { label ->
                         issues[label.name] << issue
                     }
@@ -107,24 +104,16 @@ ${javadoc}
         issues
     }
 
-    def static printIssue(issue) {
-        println "********** issue = ${issue.number}::${issue.milestone?.title}/${issue.milestone?.number}"
-    }
-    
     def getMilestone(repository) {
-        println "********** org.gradle.api.plugins.github.DraftReleaseTask.getMilestone"
-        println "********** releaseVersion = ${releaseTask.releaseVersion}"
-//        println "********** project.extensions.releaseVersion = ${project.extensions.releaseVersion}"
-        
         def find = repository.listMilestones(OPEN).find { milestone ->
             milestone.title == releaseTask.releaseVersion
         }
-        if(!find) {
+        if (!find) {
             find = repository.listMilestones(CLOSED).find { milestone ->
                 milestone.title == releaseTask.releaseVersion
             }
         }
-        
+
         find
     }
 
