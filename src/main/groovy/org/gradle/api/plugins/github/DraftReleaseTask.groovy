@@ -19,37 +19,43 @@ class DraftReleaseTask extends DefaultTask {
         group = ReleaseTask.GROUP_RELEASE
     }
 
+    def runBuild(closure) {
+        build = closure
+    }
     @TaskAction
     void run() {
-        def git = Git.open(new File("."))
-        remote = git.repository.config.getString('remote', 'origin', 'url')
+        if (releaseTask.createGitHubRelease) {
+            def git = Git.open(new File("."))
+            remote = git.repository.config.getString('remote', 'origin', 'url')
 
-        if (!(this.remote ==~ 'git@github\\.com:(.+)\\/(.+)\\.git')) {
-            throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern.  found ${this.remote}")
-        }
+            if (!(this.remote ==~ 'git@github\\.com:(.+)\\/(.+)\\.git')) {
+                throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern.  found ${this.remote}")
+            }
 
-        def gitHub = GitHub.connect()
-        def matcher = (this.remote =~ 'git@github\\.com:(.+)\\/(.+)\\.git')[0]
-        GHRepository repository = gitHub.getRepository("${matcher[1]}/${matcher[2]}")
-        def notes = project.release.githubRelease.releaseNotes
-        if (notes == null) {
-            notes = defaultNotes(repository)
-        }
-        project.github.with {
-            def ghRelease = repository.createRelease(releaseTask.tagName())
-                    .name(releaseTask.releaseVersion)
-                    .body(notes.toString())
-                    .draft(true)
-                    .create()
-            project.subprojects { subproject ->
-                subproject.configurations.archives { archive ->
-                    gitHub.with {
-                        def jar = archive.getAllArtifacts().find { artifact ->
-                            artifact.getFile().getName().endsWith("-${project.version}.jar")
+            def gitHub = GitHub.connect()
+            def matcher = (this.remote =~ 'git@github\\.com:(.+)\\/(.+)\\.git')[0]
+            GHRepository repository = gitHub.getRepository("${matcher[1]}/${matcher[2]}")
+            def notes = project.release.githubRelease.releaseNotes
+            if (notes == null) {
+                notes = defaultNotes(repository)
+            }
+            project.github.with {
+                println "Creating release notes"
+                def ghRelease = repository.createRelease(releaseTask.tagName())
+                        .name(releaseTask.releaseVersion)
+                        .body(notes.toString())
+                        .draft(true)
+                        .create()
+                project.subprojects { subproject ->
+                    subproject.configurations.archives { archive ->
+                        gitHub.with {
+                            def jar = archive.getAllArtifacts().find { artifact ->
+                                artifact.getFile().getName().endsWith("-${project.version}.jar")
+                            }
+
+                            println "Uploading ${jar.getFile()}"
+                            ghRelease.uploadAsset(jar.getFile(), "application/jar")
                         }
-
-                        println "Uploading ${jar.getFile()}"
-                        ghRelease.uploadAsset(jar.getFile(), "application/jar")
                     }
                 }
             }

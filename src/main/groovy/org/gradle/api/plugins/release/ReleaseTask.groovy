@@ -1,4 +1,5 @@
 package org.gradle.api.plugins.release
+
 import org.eclipse.jgit.api.Git
 import org.gradle.StartParameter
 import org.gradle.api.plugins.github.DraftReleaseTask
@@ -13,8 +14,9 @@ class ReleaseTask extends GradleBuild {
     def String tagPrefix = "r"
     def String releaseVersion
     def String nextVersion
-    def boolean tagRelease = false
-    def boolean createGitHubRelease = false
+    def boolean tagRelease = true
+    def boolean createGitHubRelease = true
+    def boolean pushChangeToGit = true
     def Git git
     UpdateSpec update = new UpdateSpec()
     GithubReleaseSpec githubRelease = new GithubReleaseSpec()
@@ -45,7 +47,6 @@ class ReleaseTask extends GradleBuild {
 
         project.task('pushToRemote', group: 'release',
                 description: 'Pushes changes to remote repository.') << this.&pushToRemote
-//        pushToRemote.dependsOn('compileJava', 'jar', 'uploadArchives')
 
         def updateToNextVersion = project.task('updateToNextVersion', group: 'release',
                 description: 'Updates version to next, using x.x.x+1 pattern.') << this.&updateToNextVersion
@@ -54,7 +55,6 @@ class ReleaseTask extends GradleBuild {
 
     def updateToReleaseVersion() {
         updateVersions(project.version, releaseVersion)
-        println "********** project.version = ${project.version}"
 
         git.commit()
                 .setMessage("Release $releaseVersion")
@@ -91,8 +91,10 @@ class ReleaseTask extends GradleBuild {
     }
 
     def pushToRemote() {
-//        git.push()
-//                .call()
+        if (pushChangeToGit) {
+            git.push()
+                    .call()
+        }
     }
 
     void githubRelease(Closure closure) {
@@ -108,10 +110,18 @@ class ReleaseTask extends GradleBuild {
         nextVersion = bumpVersion(releaseVersion)
     }
 
-    void createRelease(boolean create) {
+    def pushChanges(boolean create) {
+        pushChangeToGit = create;
+    }
+  
+    def createRelease(boolean create) {
         createGitHubRelease = create;
     }
 
+    def createTag(boolean create) {
+        tagRelease = create
+    }
+    
     def bumpVersion(String old) {
         if (old != "unspecified") {
             String[] split = old.split('\\.')
@@ -127,15 +137,6 @@ class ReleaseTask extends GradleBuild {
     void update(Closure closure) {
         ConfigureUtil.configure(closure, this.update)
     }
-
-//    void dependsOn(List<Task> t) {
-//        tasks = tasks.plus(tasks.size() - 3, t.collect { it.name })
-//    }
-//
-//    void dependsOn(Task t) {
-//        tasks = tasks.plus(tasks.size() - 3, t.collect { it.name })
-//    }
-
 
     private static Object call(def c) {
         c instanceof Closure ? c.call() : c
