@@ -1,170 +1,141 @@
 package org.gradle.api.plugins.release
 
-import org.gradle.api.Task
+import org.eclipse.jgit.api.Git
+import org.gradle.StartParameter
+import org.gradle.api.plugins.github.DraftReleaseTask
 import org.gradle.api.tasks.GradleBuild
+import org.gradle.initialization.GradleLauncherFactory
 import org.gradle.util.ConfigureUtil
 
+import javax.inject.Inject
+
 class ReleaseTask extends GradleBuild {
+    public static final String GROUP_RELEASE = 'Github Release'
+    def String tagPrefix = "r"
+    def String releaseVersion
+    def String nextVersion
+    def boolean tagRelease = true
+    def boolean createGitHubRelease = true
+    def boolean pushChangeToGit = true
+    def Git git
+    UpdateSpec update = new UpdateSpec()
+    GithubReleaseSpec githubRelease = new GithubReleaseSpec()
+    DraftReleaseTask ghReleaseTask
+    String remote
 
-    private Object aVersion
-    private Object aTag
-    private Object aTagMessage
-    private Object aCommitMessage
-
-    UpdateSpec update
-    NextSpec next
-
-    ReleaseTask() {
-        startParameter = project.gradle.startParameter.newInstance()
-        startParameter.setRecompileScripts(false)
-        startParameter.setRerunTasks(false)
-
-        setDefaults()
+    @Inject
+    ReleaseTask(StartParameter currentBuild, GradleLauncherFactory gradleLauncherFactory) {
+        super(currentBuild, gradleLauncherFactory)
+        group = GROUP_RELEASE
+        description = 'Verify project, release, and update version to next.'
+        ghReleaseTask = project.task('draftGhRelease', type: DraftReleaseTask)
 
         tasks = [
-                'unSnapshotVersion',
-                'commitReleaseVersion',
-                'tagReleaseVersion',
-                'updateVersion',
-                'commitNewVersion',
-                'pushToRemote'
+                'updateToReleaseVersion',
+                'uploadArchives',
+                'pushToRemote',
+                'updateToNextVersion',
         ]
 
-        project.task(
-                'unSnapshotVersion',
-                group: 'release',
-                description: 'Updates version to release variant.'
-        ) << this.&unSnapshotVersion
+        ghReleaseTask.releaseTask = this
 
-        project.task(
-                'commitReleaseVersion',
-                group: 'release',
-                description: 'Commits the release version update.'
-        ) << this.&commitReleaseVersion
+        git = Git.open(new File('.'))
+        remote = git.repository.config.getString('remote', 'origin', 'url')
 
-        project.task(
-                'tagReleaseVersion',
-                group: 'release',
-                description: 'Tags the release version update.'
-        ) << this.&tagReleaseVersion
+        project.task('updateToReleaseVersion', group: 'release',
+                description: 'Updates version to release variant.') << this.&updateToReleaseVersion
 
-        project.task(
-                'updateVersion',
-                group: 'release',
-                description: 'Updates version to next, using x.x.x+1 pattern.'
-        ) << this.&updateVersion
+        project.task('pushToRemote', group: 'release',
+                description: 'Pushes changes to remote repository.') << this.&pushToRemote
 
-        project.task(
-                'commitNewVersion',
-                group: 'release',
-                description: 'Commits the version update.'
-        ) << this.&commitNewVersion
-
-        project.task(
-                'pushToRemote',
-                group: 'release',
-                description: 'Pushes changes to remote repository.'
-        ) << this.&pushToRemote
+        def updateToNextVersion = project.task('updateToNextVersion', group: 'release',
+                description: 'Updates version to next, using x.x.x+1 pattern.') << this.&updateToNextVersion
+        updateToNextVersion.dependsOn(ghReleaseTask)
     }
 
-    private void setDefaults() {
-        group = 'release'
-        description = 'Verify project, release, and update version to next.'
-        update = new UpdateSpec();
-        next = new NextSpec();
-        version = project.version - '-SNAPSHOT'
-        tag = "r$version"
-        tagMessage = "Release $version"
-        commitMessage = "Release $version"
-    }
+    def updateToReleaseVersion() {
+        updateVersions(project.version, releaseVersion)
 
+        git.commit()
+                .setMessage("Release $releaseVersion")
+                .call()
 
-    def unSnapshotVersion() {
-        def oldVersion = project.version
-        def newVersion = getVersion()
-        update.files.each { project.ant.replaceregexp(file: it, match: oldVersion, replace: newVersion) }
-        update.projects*.version = newVersion
-    }
-
-    def commitReleaseVersion() {
-        update.files.each {
-            project.git.add(it)
+        if (tagRelease) {
+            git.tag()
+                    .setName(tagName())
+                    .setMessage("Release ${releaseVersion}")
+                    .call()
         }
-        project.git.commit(getCommitMessage())
     }
 
-    def tagReleaseVersion() {
-        project.git.tag(getTag(), getTagMessage())
+    def tagName() {
+        tagPrefix + releaseVersion
     }
 
-    def updateVersion() {
-        def oldVersion = project.version
-        def newVersion = next.version
-        update.files.each { project.ant.replaceregexp(file: it, match: oldVersion, replace: newVersion) }
-        update.projects*.version = newVersion
+    def updateToNextVersion() {
+        updateVersions(releaseVersion, nextVersion)
+
+        git.commit()
+                .setMessage("Update to next development version: ${nextVersion}")
+                .call()
     }
 
-    def commitNewVersion() {
+    def updateVersions(oldVersion, String newVersion) {
         update.files.each {
-            project.git.add(it)
+            project.ant.replaceregexp(file: it, match: oldVersion, replace: newVersion)
+            git.add()
+                    .addFilepattern(it.path)
+                    .call()
         }
-        project.git.commit(next.commitMessage)
+        update.projects*.version = newVersion
     }
 
     def pushToRemote() {
-        project.git.push()
+        if (pushChangeToGit) {
+            git.push()
+                    .call()
+        }
+    }
+
+    void githubRelease(Closure closure) {
+        ConfigureUtil.configure(closure, this.githubRelease)
+    }
+
+    void tagPrefix(value) {
+        tagPrefix = call(value)
+    }
+
+    void version(final def block) {
+        this.releaseVersion = call(block) - '-SNAPSHOT'
+        nextVersion = bumpVersion(releaseVersion)
+    }
+
+    def pushChanges(boolean create) {
+        pushChangeToGit = create;
+    }
+  
+    def createRelease(boolean create) {
+        createGitHubRelease = create;
+    }
+
+    def createTag(boolean create) {
+        tagRelease = create
+    }
+    
+    def bumpVersion(String old) {
+        if (old != "unspecified") {
+            String[] split = old.split('\\.')
+            def next = (split.last() as int) + 1
+
+            def updated = split[0..-2].join('.')
+            updated += ".${next}-SNAPSHOT"
+            updated
+        }
+
     }
 
     void update(Closure closure) {
         ConfigureUtil.configure(closure, this.update)
-    }
-
-    void next(Closure closure) {
-        ConfigureUtil.configure(closure, this.next)
-    }
-
-    void dependsOn(List<Task> t) {
-        tasks = tasks.plus(tasks.size() - 3, t.collect { it.name })
-    }
-
-    void dependsOn(Task t) {
-        tasks = tasks.plus(tasks.size() - 3, t.collect { it.name })
-    }
-
-    def getVersion() {
-        aVersion = call(aVersion)
-        return aVersion
-    }
-
-    def getTag() {
-        aTag = call(aTag)
-        return aTag
-    }
-
-    def getTagMessage() {
-        aTagMessage = call(aTagMessage)
-        return aTagMessage
-    }
-
-    def getCommitMessage() {
-        aCommitMessage = call(aCommitMessage)
-        return aCommitMessage
-    }
-
-    void setVersion(final def version) {
-        this.aVersion = version
-    }
-
-    void setTag(final def tag) {
-        this.aTag = tag
-    }
-
-    void setTagMessage(final def tagMessage) {
-        this.aTagMessage = tagMessage
-    }
-
-    void setCommitMessage(final def commitMessage) {
-        this.aCommitMessage = commitMessage
     }
 
     private static Object call(def c) {

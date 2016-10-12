@@ -6,21 +6,19 @@ class ReleaseSpec {
     private Object aName
 
     Object getTag() {
-        aTag = call(aTag)
         return aTag
     }
 
     Object getName() {
-        aName = call(aName)
         return aName
     }
 
     void setTag(final Object tag) {
-        aTag = tag
+        aTag = call(tag).toString()
     }
 
     void setName(final Object name) {
-        aName = name
+        aName = call(name).toString()
     }
 
     private static Object call(def c) {
