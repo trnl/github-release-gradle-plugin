@@ -8,7 +8,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.tasks.TaskAction
 
 class DraftReleaseTask extends DefaultTask {
-    public static final String GROUP_RELEASE = 'Github Release'
+    public static final String GROUP_RELEASE = 'GitHub Release'
 
     DraftReleaseTask() {
         group = GROUP_RELEASE
@@ -19,7 +19,7 @@ class DraftReleaseTask extends DefaultTask {
         project.github.with {
 
             if (!(project.git.remote ==~ 'git@github\\.com:(.+)\\/(.+)\\.git')) {
-                throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern")
+                throw new GradleException("GitHub repo should match 'git@github.com:{user}/{repo}.git' pattern")
             }
 
             def path = project.git.remote.replaceAll(

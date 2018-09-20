@@ -23,7 +23,7 @@ buildscript {
 apply plugin: 'git'
 apply plugin: 'console'
 apply plugin: 'github'
-apply plguin: 'release'
+apply plugin: 'release'
 ```
 
 Please note that if you are applying 'github' or 'release', there is no need of adding 'git'.
@@ -66,7 +66,7 @@ project.git.push(File workDir, String url, String branch)
 project.git.commit(String message)
 ```
 
-### Github
+### GitHub
 
 Let you create draft release, publish wiki and github pages.
 
@@ -123,8 +123,8 @@ apply plugin: 'github'
 github {
     repo = 'git@github.com:trnl/mongo-java-driver.git'
     credentials {
-        username = { console.prompt ('Please enter Github username:') }
-        password = { console.prompt ('Please enter Github password:') }
+        username = { console.prompt ('Please enter GitHub username:') }
+        password = { console.prompt ('Please enter GitHub password:') }
     }
 }
 ```

@@ -6,7 +6,7 @@ import org.gradle.api.tasks.Copy
 
 class PagesTask extends DefaultTask {
 
-    private static final String GROUP_PAGES = 'Github Pages'
+    private static final String GROUP_PAGES = 'GitHub Pages'
 
     PagesTask() {
         setDefaults()
@@ -25,7 +25,7 @@ class PagesTask extends DefaultTask {
 
     private void setDefaults() {
         group = GROUP_PAGES
-        description = 'Clone, process, commit and push Github Pages.'
+        description = 'Clone, process, commit and push GitHub Pages.'
     }
 
     def cleanPages() {
@@ -39,7 +39,7 @@ class PagesTask extends DefaultTask {
 
     def commitPages() {
         project.git.add(workingDir(), '.')
-        project.git.commit(workingDir(), 'Publish of github pages from Gradle')
+        project.git.commit(workingDir(), 'Publish of GitHub pages from Gradle')
     }
 
     def pushPages() {

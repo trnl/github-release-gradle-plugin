@@ -7,7 +7,7 @@ import org.gradle.api.tasks.Copy
 
 class WikiTask extends DefaultTask {
 
-    private static final String GROUP_WIKI = 'Github Wiki'
+    private static final String GROUP_WIKI = 'GitHub Wiki'
 
     final String remote;
     final File workingDir;
@@ -16,7 +16,7 @@ class WikiTask extends DefaultTask {
         setDefaults()
         workingDir = new File(project.buildDir, 'wiki')
         if (!(project.git.remote ==~ 'git@github\\.com:(.+)\\/(.+)\\.git')) {
-            throw new GradleException("Github repo should match 'git@github.com:{user}/{repo}.git' pattern")
+            throw new GradleException("GitHub repo should match 'git@github.com:{user}/{repo}.git' pattern")
         }
 
         remote = project.git.remote.replaceAll(

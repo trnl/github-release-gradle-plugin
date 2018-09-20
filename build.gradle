@@ -72,17 +72,14 @@ uploadArchives {
 
 pom {
     project {
-
-        name 'Github Gradle Release Plugins'
-        description ='Set of plugins that can help you to release your project on Github'
+        name 'GitHub Gradle Release Plugins'
+        description ='Set of plugins that can help you to release your project on GitHub'
         url 'http://github.com/trnl/clirr-gradle-plugin'
         scm {
             url 'git@github.com:trnl/release-gradle-plugin.git'
             connection 'scm:git:git@github.com:trnl/release-gradle-plugin.git'
             developerConnection 'scm:git:git@github.com:trnl/release-gradle-plugin.git'
-
         }
-
         licenses {
             license {
                 name 'The Apache Software License, Version 2.0'
