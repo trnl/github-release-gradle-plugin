@@ -15,4 +15,3 @@ class ReleasePlugin implements Plugin<Project> {
         project.task( 'release', type: ReleaseTask)
     }
 }
-
